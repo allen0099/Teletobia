@@ -8,13 +8,13 @@ from typing import Optional, Union
 from pyrogram import types
 
 from bot import Bot
-from core.log import main_logger, execution_logger
+from core.log import main_logger, event_logger
 
 log: logging.Logger = main_logger(__name__)
-exec_log: logging.Logger = execution_logger(__name__)
+logger: logging.Logger = event_logger(__name__)
 
 
-def executor_log(func):
+def event_log(func):
     """
     Decorator to print function call details.
 
@@ -45,8 +45,13 @@ def executor_log(func):
         func_name: str = func.__qualname__
         in_chat: types.Chat = message.chat
 
-        exec_log.debug(f"[Execute] {executor.id} triggered {func_name} in {in_chat.id}")
-        exec_log.debug(f"  Full message: {repr(message)}")
+        if executor:
+            logger.debug(f"[Execute] {executor.id} triggered {func_name} in {in_chat.id}")
+
+        else:
+            logger.debug(f"[Automatic] Triggered {func_name} in {in_chat.id}")
+
+        logger.debug(f"  Full message: {repr(message)}")
 
         # Ready to return
         if inspect.iscoroutinefunction(func):

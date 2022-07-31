@@ -8,6 +8,15 @@ import coloredlogs
 from core import settings
 
 # ---------------------------------------------------------------------------
+#   Global Variables
+# ---------------------------------------------------------------------------
+
+LEVEL: int = logging.INFO
+
+if settings.DEBUG:
+    LEVEL: int = logging.DEBUG
+
+# ---------------------------------------------------------------------------
 #   Prepare folders
 # ---------------------------------------------------------------------------
 
@@ -54,12 +63,12 @@ class Handlers:
     )
     pyrogram_handler.setFormatter(basic_formatter)
 
-    exec_handler: TimedRotatingFileHandler = TimedRotatingFileHandler(
-        "logs/bot/execution.log",
+    event_handler: TimedRotatingFileHandler = TimedRotatingFileHandler(
+        "logs/bot/events.log",
         when="midnight",
         encoding="utf-8"
     )
-    exec_handler.setFormatter(basic_formatter)
+    event_handler.setFormatter(basic_formatter)
 
     main_handler: TimedRotatingFileHandler = TimedRotatingFileHandler(
         "logs/bot/bot.log",
@@ -92,6 +101,7 @@ class PyrogramLogger:
             self.level: int = logging.WARNING
 
         self.logger.addHandler(Handlers.pyrogram_handler)
+        self.logger.setLevel(self.level)
         coloredlogs.install(logger=self.logger, level=self.level, fmt=Handlers.read_format)
 
         self._initialized = True
@@ -102,22 +112,29 @@ class PyrogramLogger:
         return cls._instance
 
 
-def execution_logger(name: str) -> logging.Logger:
-    logger: logging.Logger = logging.Logger(f"execution.{name}")
-    logger.addHandler(Handlers.exec_handler)
+def event_logger(name: str) -> logging.Logger:
+    """
+    For those you don't want to see them in console.
+
+    Args:
+        name:
+
+    Returns:
+
+    """
+    logger: logging.Logger = logging.Logger(f"event.{name}")
+    logger.addHandler(Handlers.event_handler)
+    logger.setLevel(LEVEL)
+    logger.propagate = False
 
     return logger
 
 
 def main_logger(name: str) -> logging.Logger:
-    if settings.DEBUG:
-        level: int = logging.DEBUG
-
-    else:
-        level: int = logging.INFO
-
     logger: logging.Logger = logging.getLogger(name)
     logger.addHandler(Handlers.main_handler)
+    logger.setLevel(LEVEL)
+    logger.propagate = False
 
-    coloredlogs.install(logger=logger, level=level, fmt=Handlers.read_format)
+    coloredlogs.install(logger=logger, level=LEVEL, fmt=Handlers.read_format)
     return logger
