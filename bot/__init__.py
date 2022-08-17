@@ -52,7 +52,7 @@ class Bot(Client):
             "enabled": True,
             "root": "bot/plugins",
             "include": [],
-            "exclude": []
+            "exclude": [],
         }
 
         log.debug("Plugins loaded!")
@@ -80,10 +80,12 @@ class Bot(Client):
 
         me: types.User = self.me
 
-        info_str: str = f"{me.first_name}" \
-                        f"{' ' + me.last_name if me.last_name else ''}" \
-                        f"{' (@' + me.username + ')' if me.username else ''}" \
-                        f" ID: {me.id}"
+        info_str: str = (
+            f"{me.first_name}"
+            f"{' ' + me.last_name if me.last_name else ''}"
+            f"{' (@' + me.username + ')' if me.username else ''}"
+            f" ID: {me.id}"
+        )
 
         log.info(info_str)
 

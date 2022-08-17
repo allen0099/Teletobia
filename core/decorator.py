@@ -25,7 +25,9 @@ def event_log(func):
     log.debug(f"Ready to log {func.__module__}.{func.__qualname__} ...")
 
     async def wrapper(*args, **kwargs):
-        func_args: dict[str, object] = inspect.signature(func).bind(*args, **kwargs).arguments
+        func_args: dict[str, object] = (
+            inspect.signature(func).bind(*args, **kwargs).arguments
+        )
 
         instance: Optional[Bot] = None
         message: Optional[types.Message] = None
@@ -41,17 +43,27 @@ def event_log(func):
             if isinstance(arg_value, types.Message):
                 message = arg_value
 
-        executor: Union[types.Chat, types.User] = message.from_user or message.sender_chat  # From channel or user
-        func_name: str = func.__qualname__
-        in_chat: types.Chat = message.chat
+        if not message:
+            logger.critical(
+                f"{func.__module__}.{func.__qualname__} - No message found in {func_args.items()}"
+            )
 
-        if executor:
-            logger.debug(f"[Execute] {executor.id} triggered {func_name} in {in_chat.id}")
+        if message:
+            executor: Union[types.Chat, types.User] = (
+                    message.from_user or message.sender_chat
+            )  # From channel or user
+            func_name: str = func.__qualname__
+            in_chat: types.Chat = message.chat
 
-        else:
-            logger.debug(f"[Automatic] Triggered {func_name} in {in_chat.id}")
+            if executor:
+                logger.debug(
+                    f"[Execute] {executor.id} triggered {func_name} in {in_chat.id}"
+                )
 
-        logger.debug(f"  Full message: {repr(message)}")
+            else:
+                logger.debug(f"[Automatic] Triggered {func_name} in {in_chat.id}")
+
+            logger.debug(f"  Full message: {repr(message)}")
 
         # Ready to return
         if inspect.iscoroutinefunction(func):

@@ -9,7 +9,7 @@ from core.log import main_logger
 log: logging.Logger = main_logger(__name__)
 
 
-@Client.on_message(filters.command("ping") & ~ filters.forwarded)
+@Client.on_message(filters.command("ping") & ~filters.forwarded)
 @event_log
 async def ping(_: Client, msg: Message) -> None:
     """
