@@ -50,7 +50,7 @@ def event_log(func):
 
         if message:
             executor: Union[types.Chat, types.User] = (
-                    message.from_user or message.sender_chat
+                message.from_user or message.sender_chat
             )  # From channel or user
             func_name: str = func.__qualname__
             in_chat: types.Chat = message.chat

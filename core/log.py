@@ -1,6 +1,6 @@
 import logging
 import os
-from logging.handlers import TimedRotatingFileHandler
+from logging.handlers import TimedRotatingFileHandler, BaseRotatingHandler
 from typing import Optional
 
 import coloredlogs
@@ -28,9 +28,9 @@ if not os.path.exists("logs/bot"):
     os.mkdir("logs/bot")
     print("Folder logs/bot created.")
 
-if not os.path.exists("logs/pyrogram"):
-    os.mkdir("logs/pyrogram")
-    print("Folder logs/pyrogram created.")
+if not os.path.exists("logs/third"):
+    os.mkdir("logs/third")
+    print("Folder logs/third created.")
 
 
 # ---------------------------------------------------------------------------
@@ -39,40 +39,51 @@ if not os.path.exists("logs/pyrogram"):
 
 
 class Handlers:
-    read_format: str = (
+    READ_FORMATTER: str = (
         "%(asctime)s %(name)s[%(process)d:%(thread)d] %(levelname)s %(message)s"
     )
 
-    basic_formatter: logging.Formatter = logging.Formatter(
+    BASIC_FORMATTER: logging.Formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
     if not settings.DEBUG:
         # 設定預設 logging 等級
-        main_handler_formatter: logging.Formatter = logging.Formatter(
+        MAIN_FORMATTER: logging.Formatter = logging.Formatter(
             "%(asctime)s - %(name)s[%(process)d:%(thread)d] - "
             "%(levelname)s - %(message)s"
         )
 
     else:
-        main_handler_formatter: logging.Formatter = logging.Formatter(
+        MAIN_FORMATTER: logging.Formatter = logging.Formatter(
             "%(asctime)s - %(processName)s(%(process)d):%(threadName)s(%(thread)d) - "
             "[%(levelname)8s] %(name)s:%(lineno)d - %(message)s"
         )
 
-    pyrogram_handler: TimedRotatingFileHandler = TimedRotatingFileHandler(
-        "logs/pyrogram/pyrogram.log", when="midnight", encoding="utf-8"
-    )
-    pyrogram_handler.setFormatter(basic_formatter)
-
-    event_handler: TimedRotatingFileHandler = TimedRotatingFileHandler(
+    EVENT_HANDLER: TimedRotatingFileHandler = TimedRotatingFileHandler(
         "logs/bot/events.log", when="midnight", encoding="utf-8"
     )
-    event_handler.setFormatter(basic_formatter)
+    EVENT_HANDLER.setFormatter(BASIC_FORMATTER)
 
-    main_handler: TimedRotatingFileHandler = TimedRotatingFileHandler(
+    MAIN_HANDLER: TimedRotatingFileHandler = TimedRotatingFileHandler(
         "logs/bot/bot.log", when="midnight", encoding="utf-8"
     )
-    main_handler.setFormatter(main_handler_formatter)
+    MAIN_HANDLER.setFormatter(MAIN_FORMATTER)
+
+    BASIC_HANDLERS: dict[str, BaseRotatingHandler] = {}
+
+    @classmethod
+    def get_handler(cls, name: str, bot: bool = False):
+        if cls.BASIC_HANDLERS.get(name):
+            return cls.BASIC_HANDLERS[name]
+
+        directory: str = "bot" if bot else "third"
+        new_handler: TimedRotatingFileHandler = TimedRotatingFileHandler(
+            f"logs/{directory}/{name}.log", when="midnight", encoding="utf-8"
+        )
+        new_handler.setFormatter(cls.BASIC_FORMATTER)
+
+        cls.BASIC_HANDLERS[name] = new_handler
+        return cls.BASIC_HANDLERS[name]
 
 
 # ---------------------------------------------------------------------------
@@ -80,16 +91,16 @@ class Handlers:
 # ---------------------------------------------------------------------------
 
 
-# Pyrogram logger singleton
-class PyrogramLogger:
-    _instance: Optional["PyrogramLogger"] = None
+# Basic singleton logger
+class BasicLogger:
+    _instance: Optional["BasicLogger"] = None
     _initialized: bool = False
 
-    logger: logging.Logger = logging.getLogger("pyrogram")
-
-    def __init__(self, detail: bool = False):
+    def __init__(self, name: str, detail: bool = False):
         if self._initialized:
             return
+
+        self.logger: logging.Logger = logging.getLogger(name)
 
         if detail:
             self.level: int = logging.INFO
@@ -97,10 +108,10 @@ class PyrogramLogger:
         else:
             self.level: int = logging.WARNING
 
-        self.logger.addHandler(Handlers.pyrogram_handler)
+        self.logger.addHandler(Handlers.get_handler(name))
         self.logger.setLevel(self.level)
         coloredlogs.install(
-            logger=self.logger, level=self.level, fmt=Handlers.read_format
+            logger=self.logger, level=self.level, fmt=Handlers.READ_FORMATTER
         )
 
         self._initialized = True
@@ -109,6 +120,51 @@ class PyrogramLogger:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
+
+
+class PyrogramLogger(BasicLogger):
+    def __init__(self, detail: bool = False):
+        super().__init__("pyrogram", detail)
+
+
+class SQLAlchemyEngineLogger(BasicLogger):
+    def __init__(self, detail: bool = False):
+        """
+        Controls SQL echoing.
+        Set to logging.INFO for SQL query output, logging.DEBUG for query + result set output.
+        These settings are equivalent to echo=True and echo="debug" on create_engine.echo, respectively.
+        """
+        super().__init__("sqlalchemy.engine", detail)
+
+
+class SQLAlchemyPoolLogger(BasicLogger):
+    def __init__(self, detail: bool = False):
+        """
+        Controls connection pool logging.
+        Set to logging.INFO to log connection invalidation and recycle events;
+        set to logging.DEBUG to additionally log all pool checkins and checkouts.
+        These settings are equivalent to pool_echo=True and pool_echo="debug" on create_engine.echo_pool, respectively.
+        """
+        super().__init__("sqlalchemy.pool", detail)
+
+
+class SQLAlchemyDialectsLogger(BasicLogger):
+    def __init__(self, detail: bool = False):
+        """
+        Controls custom logging for SQL dialects,
+        to the extend that logging is used within specific dialects, which is generally minimal.
+        """
+        super().__init__("sqlalchemy.dialects", detail)
+
+
+class SQLAlchemyORMLogger(BasicLogger):
+    def __init__(self, detail: bool = False):
+        """
+        Controls logging of various ORM functions to the extent that logging is used within the ORM,
+        which is generally minimal.
+        Set to logging.INFO to log some top-level information on mapper configurations.
+        """
+        super().__init__("sqlalchemy.orm", detail)
 
 
 def event_logger(name: str) -> logging.Logger:
@@ -122,7 +178,7 @@ def event_logger(name: str) -> logging.Logger:
 
     """
     logger: logging.Logger = logging.Logger(f"event.{name}")
-    logger.addHandler(Handlers.event_handler)
+    logger.addHandler(Handlers.EVENT_HANDLER)
     logger.setLevel(LEVEL)
     logger.propagate = False
 
@@ -131,9 +187,9 @@ def event_logger(name: str) -> logging.Logger:
 
 def main_logger(name: str) -> logging.Logger:
     logger: logging.Logger = logging.getLogger(name)
-    logger.addHandler(Handlers.main_handler)
+    logger.addHandler(Handlers.MAIN_HANDLER)
     logger.setLevel(LEVEL)
     logger.propagate = False
 
-    coloredlogs.install(logger=logger, level=LEVEL, fmt=Handlers.read_format)
+    coloredlogs.install(logger=logger, level=LEVEL, fmt=Handlers.READ_FORMATTER)
     return logger

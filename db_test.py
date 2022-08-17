@@ -32,9 +32,9 @@ if __name__ == "__main__":
 
     """This is a Session usage example, which use a context manager to automatically commit or rollback."""
     if True:
-        stmt = text("SELECT x, y FROM some_table WHERE y > :y ORDER BY x, y").bindparams(
-            y=6
-        )
+        stmt = text(
+            "SELECT x, y FROM some_table WHERE y > :y ORDER BY x, y"
+        ).bindparams(y=6)
         # verbose version of what a context manager will do
         with Session(db.ENGINE) as sess:
             sess.begin()

@@ -212,9 +212,9 @@ class Env:
         # Smart casting
         if self.smart_cast:
             if (
-                    cast is None
-                    and default is not None
-                    and not isinstance(default, NoValue)
+                cast is None
+                and default is not None
+                and not isinstance(default, NoValue)
             ):
                 cast = type(default)
 

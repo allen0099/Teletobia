@@ -27,8 +27,6 @@ except ImportError:
     from threading import get_ident as _ident_func
 
 log: logging.Logger = logging.getLogger(__name__)
-logging.basicConfig()
-logging.getLogger("sqlalchemy.engine").setLevel(logging.DEBUG)
 
 
 class Database:
@@ -57,7 +55,7 @@ class Database:
         try:
             self.session()
         except Exception as e:
-            log.exception(f'[Database] Session started failed due to {e}')
+            log.exception(f"[Database] Session started failed due to {e}")
         log.info("[Database] Connection successful, session started.")
 
     @property
@@ -82,7 +80,7 @@ db = Database()
 def load_models(path: str = "models"):
     loaded_models: list = []
     for path in sorted(Path(path).rglob("*.py")):
-        module_path: str = '.'.join(path.parent.parts + (path.stem,))
+        module_path: str = ".".join(path.parent.parts + (path.stem,))
         module = import_module(module_path)
 
         for name in vars(module).keys():
